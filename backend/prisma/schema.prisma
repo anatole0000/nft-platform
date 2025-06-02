@@ -1,0 +1,77 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  auctions  Auction[] // 1 user có thể tạo nhiều đấu giá
+  bids      Bid[] // 1 user có thể bid nhiều
+  nfts      NFT[] // thêm dòng này để fix lỗi thiếu "opposite relation"
+  transferFromHistories TransferHistory[] @relation("TransferFromUser")
+  transferToHistories   TransferHistory[] @relation("TransferToUser")
+  notifications Notification[]
+  createdAt DateTime  @default(now())
+}
+
+model NFT {
+  id        String   @id @default(uuid())
+  name      String
+  imageUrl  String
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  auction   Auction?
+  createdAt DateTime @default(now())
+  transferHistories TransferHistory[]
+}
+
+model Auction {
+  id         String   @id @default(uuid())
+  nftId      String   @unique // thêm @unique để xác định 1-1 với NFT
+  nft        NFT      @relation(fields: [nftId], references: [id])
+  ownerId    String
+  owner      User     @relation(fields: [ownerId], references: [id])
+  startPrice Float
+  endTime    DateTime
+  active     Boolean  @default(true)
+  bids       Bid[]
+  createdAt  DateTime @default(now())
+}
+
+model Bid {
+  id        String   @id @default(uuid())
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  createdAt DateTime @default(now())
+}
+
+model TransferHistory {
+  id         String   @id @default(uuid())
+  nftId      String
+  nft        NFT      @relation(fields: [nftId], references: [id])
+  fromUserId String
+  fromUser   User     @relation("TransferFromUser", fields: [fromUserId], references: [id])
+  toUserId   String
+  toUser     User     @relation("TransferToUser", fields: [toUserId], references: [id])
+  amount     Float
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
